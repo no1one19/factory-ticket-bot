@@ -42,3 +42,17 @@ async def test_only_assigned_mechanic_can_finish_ticket(db_path) -> None:
     assert await database.finish_ticket(ticket_id, 201) is None
     assert await database.finish_ticket(ticket_id, 200) == 100
     assert await database.finish_ticket(ticket_id, 200) is None
+
+
+@pytest.mark.asyncio
+async def test_get_open_ticket_returns_only_available_ticket(db_path) -> None:
+    ticket_id = await _create_ticket(db_path)
+
+    ticket = await database.get_open_ticket(ticket_id)
+    assert ticket is not None
+    assert ticket.id == ticket_id
+
+    await database.claim_ticket(ticket_id, 200)
+
+    assert await database.get_open_ticket(ticket_id) is None
+    assert await database.get_open_ticket(ticket_id + 1) is None

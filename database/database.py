@@ -1,6 +1,16 @@
+from typing import NamedTuple
+
 import aiosqlite
 
 DB_NAME = "factory_bot.db"
+
+
+class TicketCard(NamedTuple):
+    id: int
+    machine_number: str
+    description: str
+    photo_id: str
+    criticality: str
 
 
 async def init_db() -> None:
@@ -21,6 +31,29 @@ async def init_db() -> None:
             """
         )
         await db.commit()
+
+
+async def list_open_tickets() -> list[TicketCard]:
+    """Return all tickets that can still be claimed."""
+    async with aiosqlite.connect(DB_NAME) as db:
+        async with db.execute(
+            "SELECT id, machine_number, description, photo_id, criticality "
+            "FROM tickets WHERE status = 'open'"
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [TicketCard(*row) for row in rows]
+
+
+async def get_open_ticket(ticket_id: int) -> TicketCard | None:
+    """Return one open ticket, or None when it is no longer available."""
+    async with aiosqlite.connect(DB_NAME) as db:
+        async with db.execute(
+            "SELECT id, machine_number, description, photo_id, criticality "
+            "FROM tickets WHERE id = ? AND status = 'open'",
+            (ticket_id,),
+        ) as cursor:
+            row = await cursor.fetchone()
+            return TicketCard(*row) if row else None
 
 
 async def claim_ticket(ticket_id: int, mechanic_id: int) -> int | None:
