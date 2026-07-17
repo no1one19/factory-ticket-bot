@@ -3,4 +3,6 @@ __pycache__/
 .venv/
 .pytest_cache/
 *.db
+*.db-*
+*.log
 factory_report.csv

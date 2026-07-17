@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import aiosqlite
 
+from database import database
 from handlers import handlers_worker
 
 
@@ -68,22 +69,8 @@ class NotificationTests(unittest.IsolatedAsyncioTestCase):
     async def test_ticket_is_committed_before_notifications(self):
         db_path = self.enterContext(tempfile.TemporaryDirectory())
         db_path = f"{db_path}/tickets.db"
-        async with aiosqlite.connect(db_path) as db:
-            await db.execute(
-                """
-                CREATE TABLE tickets (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
-                    machine_number TEXT NOT NULL,
-                    description TEXT NOT NULL,
-                    photo_id TEXT NOT NULL,
-                    criticality TEXT NOT NULL,
-                    status TEXT NOT NULL DEFAULT 'open',
-                    mechanic_id INTEGER
-                )
-                """
-            )
-            await db.commit()
+        with patch.object(database, "DB_NAME", db_path):
+            await database.init_db()
 
         state = FakeState(
             {
@@ -107,7 +94,7 @@ class NotificationTests(unittest.IsolatedAsyncioTestCase):
             observed_ticket_ids.append(ticket_id)
 
         with (
-            patch.object(handlers_worker, "DB_NAME", db_path),
+            patch.object(database, "DB_NAME", db_path),
             patch.object(
                 handlers_worker,
                 "notify_ticket_viewers",

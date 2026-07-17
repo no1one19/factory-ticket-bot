@@ -1,7 +1,6 @@
 import asyncio
 import logging
 
-import aiosqlite
 from aiogram import Bot, F, Router
 from aiogram.types import (
     InlineKeyboardButton,
@@ -16,7 +15,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.filters import Command
 
 from config import ticket_viewer_ids
-from database.database import DB_NAME
+from database.database import create_ticket
 from keyboards.reply import main_menu
 
 router = Router()
@@ -138,19 +137,14 @@ async def process_criticality(message: Message, state: FSMContext, bot: Bot):
     criticality = message.text
     user_id = message.from_user.id
 
-    async with aiosqlite.connect(DB_NAME) as db:
-        cursor = await db.execute(
-            """
-            INSERT INTO tickets (user_id, machine_number, description, photo_id, criticality)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (user_id, machine_number, description, photo_id, criticality),
-        )
-        await db.commit()
-        ticket_id = cursor.lastrowid
-
-    if ticket_id is not None:
-        await notify_ticket_viewers(bot, ticket_id, user_id)
+    ticket_id = await create_ticket(
+        user_id,
+        machine_number,
+        description,
+        photo_id,
+        criticality,
+    )
+    await notify_ticket_viewers(bot, ticket_id, user_id)
 
     await state.clear()
 
